@@ -4,6 +4,8 @@
 
 Live captions for whatever your Mac is playing, in a floating bar over every app.
 
+![CaptionOverlay captioning a YouTube video in Safari](docs/screenshot.png)
+
 CaptionOverlay listens to the sound your Mac plays (not the microphone) and shows what is said as two
 lines of text that float above every window, including full-screen video. Everything runs on the Mac;
 no sound and no text leaves it.
