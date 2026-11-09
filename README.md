@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="128" height="128" alt="CaptionOverlay icon"></p>
+
 # CaptionOverlay
 
 Live captions for whatever your Mac is playing, in a floating bar over every app.
@@ -6,9 +8,8 @@ CaptionOverlay listens to the sound your Mac plays (not the microphone) and show
 lines of text that float above every window, including full-screen video. Everything runs on the Mac;
 no sound and no text leaves it.
 
-It was built for a deaf user whose macOS Live Captions stopped working while another app was capturing
-the screen. CaptionOverlay does not depend on Live Captions, so it keeps working in that situation. It
-also offers a second, more accurate speech engine (NVIDIA Parakeet) and a caption bar you can place
+CaptionOverlay does not depend on macOS Live Captions, so it also works where those stay silent. It
+offers two speech engines, Apple's and the more accurate NVIDIA Parakeet, and a caption bar you can place
 wherever you want.
 
 **Status: beta.** It works well on speech. Film sound with music and several speakers has not been tested
@@ -177,37 +178,6 @@ Videos im Vollbild.
 
 **Datenschutz:** Der Ton wird auf deinem Mac verarbeitet, nichts wird gespeichert oder verschickt. Die
 einzige Netzverbindung ist der einmalige Parakeet-Download.
-
-## Building from source
-
-```bash
-Scripts/build-app.sh
-```
-
-builds and signs `build/CaptionOverlay.app` with the Apple Development certificate in your keychain (ad hoc
-when there is none). `swift test` runs the unit tests. `Scripts/release.sh <version> <build>` makes the
-notarized DMG (needs a Developer ID certificate and notary credentials).
-
-`captionprobe` measures the engines on an audio file:
-
-```bash
-swift build -c release --disable-index-store
-.build/release/captionprobe download
-.build/release/captionprobe live recording.wav gpu vad
-```
-
-[FINDINGS.md](FINDINGS.md) holds the notes behind the design: what macOS permits, the engine comparison
-and the measurements.
-
-## How it works, in short
-
-- The system sound comes from a Core Audio process tap (macOS 14.2+), unmuted, so the sound keeps playing.
-- Apple engine: `SpeechAnalyzer` with `SpeechTranscriber`, fast provisional results.
-- Parakeet engine: NVIDIA Parakeet TDT 0.6b v3 as Core ML through [FluidAudio](https://github.com/FluidInference/FluidAudio),
-  encoder on the GPU. Parakeet reads finished audio, so once a second the not-yet-settled stretch of sound
-  is transcribed again; words that come out the same twice in a row are settled and their sound is dropped.
-  A small voice detector keeps it off silence and music.
-- The caption bar is a borderless panel that joins every Space and floats above full-screen windows.
 
 ## License
 
