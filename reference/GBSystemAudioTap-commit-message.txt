@@ -1,0 +1,35 @@
+Sound through system audio capture (experimental, macOS 14.2+)
+
+New sender setting, OFF by default: "Sound through system audio
+capture". With the sound on the other Mac ("iMac" route) the sound then
+comes from a Core Audio process tap instead of ScreenCaptureKit:
+
+- GBSystemAudioTap: a global tap of every process but DisplayBridge,
+  MUTED (CATapMuted: "captured by the tap but no audio is sent from the
+  process to the audio hardware"), read through a private aggregate
+  device clocked by the current output; float -> s16 48 kHz stereo. The
+  speakers are never muted, so a volume key cannot unmute anything — the
+  earlier redirect re-muted them after each press and leaked a few ms of
+  sound every time (user test 2026-10-27, reverted in a059366).
+- GBAudioRouter "Volume mirror": this Mac's level and mute mirror the
+  receiver's; key, menu bar and Control Center changes go to it as 0x35
+  volume / mute (receiver mute support back from 6abc54b). Session end
+  restores this Mac's own level and mute (before the tap goes away).
+- Another output picked mid-session (headphones, AirPods): the tap stops
+  and the sound plays there; the home output is muted meanwhile so that
+  switching back stays silent until the tap runs again. Sound bar caption
+  "Sound is on <output> while it's connected" (back from 6abc54b).
+- Fallback: older macOS, or the tap fails to start -> today's route
+  (ScreenCaptureKit + local mute). Without the System Audio Recording
+  permission macOS delivers silence; sender-stats.log says
+  "sound=tap(silent so far)" until anything audible arrives, and
+  audio_age now also covers the tap's chunks.
+- NSAudioCaptureUsageDescription added (English only for now; the
+  setting itself is translated, 124 keys / 0 missing, Apple's wording for
+  "System Audio Recording" from SecurityPrivacyExtension's loctable).
+
+Test branch only (user, 2026-10-27): the permission prompt and whether
+it is really better are still to be checked.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+

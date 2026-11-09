@@ -1,0 +1,50 @@
+{
+ "apple": {
+  "wer": 5.51,
+  "cer_nospace": 2.02,
+  "S": 240,
+  "D": 68,
+  "I": 66,
+  "words": 6784,
+  "per": {
+   "2026-10-19_voiceover-full-guide-de": 5.9,
+   "2026-11-06_board-comparison-voiceover-de": 4.6,
+   "2026-11-06_legacy-imac-voiceover-de": 6.6,
+   "2026-11-08_mac-mini-guide-voiceover-de": 5.2
+  },
+  "sec": 22.7,
+  "x_realtime": 130
+ },
+ "parakeet": {
+  "wer": 3.43,
+  "cer_nospace": 1.15,
+  "S": 147,
+  "D": 50,
+  "I": 36,
+  "words": 6784,
+  "per": {
+   "2026-10-19_voiceover-full-guide-de": 4.1,
+   "2026-11-06_board-comparison-voiceover-de": 3.4,
+   "2026-11-06_legacy-imac-voiceover-de": 3.2,
+   "2026-11-08_mac-mini-guide-voiceover-de": 3.1
+  },
+  "sec": 89.2,
+  "x_realtime": 33
+ },
+ "turbo": {
+  "wer": 2.65,
+  "cer_nospace": 0.89,
+  "S": 109,
+  "D": 44,
+  "I": 27,
+  "words": 6784,
+  "per": {
+   "2026-10-19_voiceover-full-guide-de": 3.5,
+   "2026-11-06_board-comparison-voiceover-de": 2.7,
+   "2026-11-06_legacy-imac-voiceover-de": 3.2,
+   "2026-11-08_mac-mini-guide-voiceover-de": 1.5
+  },
+  "sec": 138.3,
+  "x_realtime": 21
+ }
+}
