@@ -32,9 +32,11 @@ if [[ -z "${DEVID}" ]]; then
 fi
 if ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
   echo "ERROR: notary credentials '$PROFILE' missing. Run:"
+  TEAM="${DEVID##*\(}"
   echo "  xcrun notarytool store-credentials $PROFILE \\"
-  echo "    --apple-id <your-apple-id> --team-id ${DEVID##* (}"
-  echo "or set NOTARY_PROFILE to an existing profile of the same team."
+  echo "    --apple-id <your-apple-id> --team-id ${TEAM%)}"
+  echo "or reuse an existing profile of the same team:"
+  echo "  NOTARY_PROFILE=displaybridge-notary Scripts/release.sh $VERSION $BUILDNUM"
   exit 1
 fi
 
