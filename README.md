@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/icon.png" width="128" height="128" alt="CaptionOverlay icon"></p>
-
 # CaptionOverlay
+
+<p align="center"><img src="docs/icon.png" width="128" height="128" alt="CaptionOverlay icon"></p>
 
 Live captions for whatever your Mac is playing, in a floating bar over every app.
 
