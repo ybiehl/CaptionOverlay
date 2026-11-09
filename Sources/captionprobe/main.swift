@@ -191,9 +191,10 @@ func live(_ arguments: [String]) async throws {
 }
 
 func apple(_ arguments: [String]) async throws {
-    guard arguments.count >= 2 else { fail("apple <audio> <locale> [out.txt]") }
+    guard arguments.count >= 2 else { fail("apple <audio> <locale> [out.txt] [legacy]") }
     let samples = try loadAudio(arguments[0])
     let engine = AppleEngine(locale: Locale(identifier: arguments[1]))
+    engine.legacySetup = arguments.count > 3 && arguments[3] == "legacy"
     final class Box: @unchecked Sendable {
         var all = ""
         var provisional = ""
@@ -213,7 +214,22 @@ func apple(_ arguments: [String]) async throws {
         }
     }
     engine.onError = { error in print("apple engine error:", error) }
+    // Lag: how far the sound fed so far is ahead of the newest result.
+    final class Fed: @unchecked Sendable { var seconds = 0.0 }
+    let fed = Fed()
+    final class Lags: @unchecked Sendable { var volatile: [Double] = []; var final: [Double] = [] }
+    let lags = Lags()
+    engine.onResultRange = { range, isFinal in
+        let end = range.end.seconds
+        guard end.isFinite else { return }
+        lock.withLock {
+            let lag = fed.seconds - end
+            if isFinal { lags.final.append(lag) } else { lags.volatile.append(lag) }
+        }
+    }
+    let setupStart = Date()
     try await engine.start()
+    print(String(format: "apple setup took %.1f s", Date().timeIntervalSince(setupStart)))
     let started = Date()
     let chunk = 1600  // 0.1 s
     var position = 0
@@ -222,6 +238,7 @@ func apple(_ arguments: [String]) async throws {
         engine.feed(Array(samples[position..<end]))
         position = end
         let due = Double(position) / 16000
+        lock.withLock { fed.seconds = due }
         let ahead = due - Date().timeIntervalSince(started)
         if ahead > 0 { try await Task.sleep(for: .seconds(ahead)) }
     }
@@ -230,10 +247,16 @@ func apple(_ arguments: [String]) async throws {
     let text = lock.withLock {
         (box.all + " " + box.provisional).trimmingCharacters(in: .whitespaces)
     }
-    print(String(format: "apple %@: %.0f s audio, %d updates, first text after %.1f s, %d words",
-                 arguments[1], Double(samples.count) / 16000, box.updates,
+    print(String(format: "apple %@%@: %.0f s audio, %d updates, first text after %.1f s, %d words",
+                 arguments[1], engine.legacySetup ? " (legacy setup)" : "",
+                 Double(samples.count) / 16000, box.updates,
                  box.firstText?.timeIntervalSince(started) ?? .nan,
                  text.split(separator: " ").count))
+    let (volatile, final) = lock.withLock { (lags.volatile.sorted(), lags.final.sorted()) }
+    print(String(format: "  provisional text behind the sound: median %.2f s, 90 %% %.2f s (%d results)",
+                 percentile(volatile, 0.5), percentile(volatile, 0.9), volatile.count))
+    print(String(format: "  final text behind the sound:       median %.2f s, 90 %% %.2f s (%d results)",
+                 percentile(final, 0.5), percentile(final, 0.9), final.count))
     if arguments.count > 2 {
         try text.write(toFile: arguments[2], atomically: true, encoding: .utf8)
     }

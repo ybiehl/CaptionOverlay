@@ -161,6 +161,11 @@ with `captionprobe` (simulated real-time clock):
   the number to the word before ("alten5k") and cost about 6 points. Fixed, with a unit test.
 - GPU vs Neural Engine was not compared in live mode: the Mac's disk was full (see below) and the Neural
   Engine could not write its compiled model. The app uses the GPU.
+- **Apple engine delay (user report 2026-11-09, in the app):** with the first setup the first text came 11.6 s
+  after the sound began (60 s excerpt, real-time feed). With `reportingOptions [.volatileResults, .fastResults]`,
+  `SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .processLifetime)` and
+  `prepareToAnalyze` before the first sound: **1.0 s**, final results 0.5 s behind the sound, same words
+  (one more word right). The old setup can be re-measured with `captionprobe apple ... legacy`.
 - **Not measured yet:** film / YouTube sound with music and several speakers; Apple engine live from the tap;
   the permission prompts; the bar over a full-screen video with the Dock icon on; Mac mini + DisplayBridge.
 - The test Mac had 0.8 GB free disk during these runs. One Neural Engine run failed with "No space left on

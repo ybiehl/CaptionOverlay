@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreMedia
 import Foundation
 import Speech
 
@@ -23,6 +24,12 @@ public final class AppleEngine: CaptionEngine, @unchecked Sendable {
             }
         }
     }
+
+    /// For measurements only: the audio time range of every result and
+    /// whether it was final, as it arrives.
+    public var onResultRange: (@Sendable (CMTimeRange, Bool) -> Void)?
+    /// For measurements only: the slow setup the first version had.
+    public var legacySetup = false
 
     private let locale: Locale
     private var analyzer: SpeechAnalyzer?
@@ -57,10 +64,13 @@ public final class AppleEngine: CaptionEngine, @unchecked Sendable {
         return await SpeechTranscriber.installedLocales.contains { $0.identifier(.bcp47) == wanted }
     }
 
-    private static func makeTranscriber(_ locale: Locale) -> SpeechTranscriber {
+    /// Provisional results, and fast ones: a caption reader wants the word
+    /// now, the correction can follow.
+    private static func makeTranscriber(_ locale: Locale, legacy: Bool = false) -> SpeechTranscriber {
         SpeechTranscriber(
             locale: locale, transcriptionOptions: [],
-            reportingOptions: [.volatileResults], attributeOptions: [])
+            reportingOptions: legacy ? [.volatileResults] : [.volatileResults, .fastResults],
+            attributeOptions: [.audioTimeRange])
     }
 
     /// Lets macOS download the language if it is missing. `progress` gets
@@ -83,10 +93,15 @@ public final class AppleEngine: CaptionEngine, @unchecked Sendable {
             $0.identifier(.bcp47) == wanted
         }) else { throw EngineError.languageNotSupported(locale.identifier) }
 
-        let transcriber = Self.makeTranscriber(locale)
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let transcriber = Self.makeTranscriber(locale, legacy: legacySetup)
+        let analyzer = SpeechAnalyzer(
+            modules: [transcriber],
+            options: legacySetup ? nil
+                : .init(priority: .userInitiated, modelRetention: .processLifetime))
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(
             compatibleWith: [transcriber]) else { throw EngineError.noAudioFormat }
+        // Load the model now, not when the first sound arrives.
+        if !legacySetup { try await analyzer.prepareToAnalyze(in: format) }
         let (sequence, continuation) = AsyncStream<AnalyzerInput>.makeStream()
 
         lock.withLock {
@@ -99,6 +114,7 @@ public final class AppleEngine: CaptionEngine, @unchecked Sendable {
         results = Task { [weak self] in
             do {
                 for try await result in transcriber.results {
+                    self?.onResultRange?(result.range, result.isFinal)
                     let text = String(result.text.characters)
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                     self?.onUpdate?(result.isFinal
