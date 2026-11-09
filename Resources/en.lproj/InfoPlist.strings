@@ -1,0 +1,2 @@
+"NSAudioCaptureUsageDescription" = "CaptionOverlay listens to the sound your Mac plays to show it as captions. Nothing is recorded or sent anywhere.";
+"NSSpeechRecognitionUsageDescription" = "CaptionOverlay turns the sound your Mac plays into captions, on this Mac only.";

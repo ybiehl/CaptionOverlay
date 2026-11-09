@@ -1,0 +1,17 @@
+/* German interface text. Keys are the English text used in the code. */
+"Turn Captions On" = "Untertitel einschalten";
+"Turn Captions Off" = "Untertitel ausschalten";
+"Engine" = "Spracherkennung";
+"Download Parakeet (490 MB)…" = "Parakeet laden (490 MB) …";
+"Downloading… %d %%" = "Lädt … %d %%";
+"Cancel Download" = "Laden abbrechen";
+"Preparing model…" = "Modell wird vorbereitet …";
+"Language" = "Sprache";
+"Automatic" = "Automatisch";
+"Loading language…" = "Sprache wird geladen …";
+"No sound received. Allow System Audio Recording…" = "Kein Ton empfangen. Systemaudioaufnahme erlauben …";
+"Download failed. Try again." = "Laden fehlgeschlagen. Versuch es noch einmal.";
+"Captions stopped: %@" = "Untertitel angehalten: %@";
+"About CaptionOverlay" = "Über CaptionOverlay";
+"Quit" = "Beenden";
+"Parakeet speech recognition: NVIDIA Parakeet TDT 0.6b v3, licensed under CC BY 4.0, converted to Core ML by FluidInference. FluidAudio library: Apache 2.0. Silero voice detector: MIT." = "Parakeet-Spracherkennung: NVIDIA Parakeet TDT 0.6b v3, lizenziert unter CC BY 4.0, für Core ML umgewandelt von FluidInference. FluidAudio-Bibliothek: Apache 2.0. Silero-Stimmerkennung: MIT.";

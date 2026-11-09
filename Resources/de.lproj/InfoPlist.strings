@@ -1,0 +1,2 @@
+"NSAudioCaptureUsageDescription" = "CaptionOverlay hört den Ton mit, den dein Mac abspielt, um ihn als Untertitel zu zeigen. Nichts wird aufgenommen oder verschickt.";
+"NSSpeechRecognitionUsageDescription" = "CaptionOverlay wandelt den Ton, den dein Mac abspielt, in Untertitel um – nur auf diesem Mac.";
