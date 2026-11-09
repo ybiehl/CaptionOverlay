@@ -94,9 +94,11 @@ Per-error lists: `tools/asr-test/errors2-*.json`; totals: `tools/asr-test/result
 - **Parakeet detects the language by itself** (25 European languages): the English clip came out clean with no
   setting. But in a clip that switches from German to English halfway, the German part picked up English words
   ("dann is this video genau richtig für dich. This can klappt genauso …").
-- So with either engine the app needs a language choice: **Auto / Deutsch / English / …**. With Apple, "Auto"
-  would mean running two transcribers side by side and keeping the better output; with Parakeet it is built in,
-  and a fixed choice fixes mixed-language videos.
+- ~~With Parakeet a fixed language choice fixes mixed-language videos.~~ **Wrong (checked 2026-11-09):**
+  Parakeet v3 has no language input at all. FluidAudio's "language hint" only restricts the alphabet
+  (Latin / Cyrillic / Greek); its own docs say it cannot stop English words inside German speech. So the app
+  offers a language choice for Apple only; Parakeet is "Automatic". For a video where Parakeet mixes
+  languages, the way out is the Apple engine with a fixed language.
 
 ## 5. Recommendation so far
 
@@ -130,11 +132,48 @@ Out (for now): saving transcripts, translation, speaker labels, microphone input
 
 Platform floor: macOS 14.2 for the tap; macOS 26 if Apple's engine is used.
 
+## 6a. First version: what was built and measured (2026-11-09)
+
+Plan: `~/.claude/plans/pasted-content-id-d3c1-okay-i-elegant-umbrella.md` (approved 2026-11-09). Changes to
+section 6: both engines selectable (Apple with language list, Parakeet automatic); Parakeet is downloaded in
+the app, not shipped; the bar is dragged to move (not click-through); the app has a Dock icon.
+
+Parakeet runs through the Swift package **FluidAudio 0.18.3** (Core ML). Live method = the one VoiceInk uses,
+written as our own code (VoiceInk is GPL v3, nothing copied): once a second the not-yet-settled stretch of
+sound is transcribed again; words that came out the same in 2 passes in a row are settled (the newest 2 words
+never); settled sound is dropped except 3 s kept as context for the next pass.
+
+Measured on the MacBook Pro M1 Pro, one German take (10.5 min, 1,471 words, `board-comparison-voiceover-de`),
+with `captionprobe` (simulated real-time clock):
+
+| | Result |
+|---|---|
+| Download | 484 MB on disk (encoder 6-bit, decoder, joint, vocabulary + 1 MB voice detector), 39 s on this line |
+| Whole file, encoder on GPU | 118x real time (first run after download 63x), 5.8 % wrong words |
+| Whole file, encoder on Neural Engine | 220x real time, 5.7 % wrong words; first load 37 s |
+| Live, GPU, final settings | **3.9 % wrong words**; a word is on screen a median 0.8 s after it was spoken (90 %: 1.7 s); one pass takes 0.15 s |
+| Live without the 3 s context | 14.8 % wrong words (measured with the number bug below still in) |
+
+- The live text is better than the whole-file run here; the whole-file run switched to English once
+  ("photographs that really the exact") and lost words at its internal 15 s seams.
+- parakeet-mlx (Python) reached 3.4 % on this take in section 3, so the Core ML version is in the same range.
+- Bug found by this test: before a number Parakeet sends the space as a token of its own; ignoring it glued
+  the number to the word before ("alten5k") and cost about 6 points. Fixed, with a unit test.
+- GPU vs Neural Engine was not compared in live mode: the Mac's disk was full (see below) and the Neural
+  Engine could not write its compiled model. The app uses the GPU.
+- **Not measured yet:** film / YouTube sound with music and several speakers; Apple engine live from the tap;
+  the permission prompts; the bar over a full-screen video with the Dock icon on; Mac mini + DisplayBridge.
+- The test Mac had 0.8 GB free disk during these runs. One Neural Engine run failed with "No space left on
+  device". `.build` is about 1.3 GB; build with `--disable-index-store` (build-app.sh does) to save 1 GB.
+
 ## 7. Files here
 
 - `reference/GBSystemAudioTap.swift` + `GBSystemAudioTap-commit-message.txt`: the working Core Audio tap from
   DisplayBridge branch `experiment/system-audio-tap` (commit 4ef0e72). Reuse it; flip `muteBehavior` to
   unmuted and drop the DisplayBridge names.
+- `Sources/`, `Tests/`, `Scripts/`, `Resources/`: the app (see `Package.swift`). `Scripts/build-app.sh` builds
+  and signs `build/CaptionOverlay.app`. `captionprobe` (`swift build -c release --disable-index-store`, then
+  `.build/release/captionprobe download | batch | live | apple`) does the measurements of section 6a.
 - `tools/asr-test/`: the test from section 3/4: `apple_asr.swift` (Apple engine on a wav, German),
   `apple_asr2.swift` (locale as 3rd argument), `run_models.py` (parakeet / turbo), `score.py`, `score2.py`
   (normalised), `unique.py` (errors only one engine makes). They point at the scratch folder used on

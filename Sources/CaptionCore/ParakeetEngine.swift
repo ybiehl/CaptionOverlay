@@ -157,15 +157,20 @@ public actor ParakeetStreamer {
     }
 
     /// Parakeet's tokens are word pieces; a piece that begins with a space
-    /// begins a word.
+    /// begins a word. Before a number the space comes as a piece of its own.
     static func words(from tokens: [TokenTiming], offset: Double) -> [TimedWord] {
         var words: [TimedWord] = []
+        var spaceBefore = true
         for token in tokens {
             let piece = token.token
-            let beginsWord = piece.hasPrefix(" ") || piece.hasPrefix("▁")
+            let beginsWord = spaceBefore || piece.hasPrefix(" ") || piece.hasPrefix("▁")
             let text = piece.trimmingCharacters(in: CharacterSet(charactersIn: " ▁"))
-            guard !text.isEmpty else { continue }
-            if beginsWord || words.isEmpty {
+            guard !text.isEmpty else {
+                spaceBefore = true
+                continue
+            }
+            spaceBefore = false
+            if beginsWord {
                 words.append(TimedWord(text: text, start: token.startTime + offset,
                                        end: token.endTime + offset))
             } else {
