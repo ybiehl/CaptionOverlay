@@ -165,7 +165,8 @@ with `captionprobe` (simulated real-time clock):
   after the sound began (60 s excerpt, real-time feed). With `reportingOptions [.volatileResults, .fastResults]`,
   `SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .processLifetime)` and
   `prepareToAnalyze` before the first sound: **1.0 s**, final results 0.5 s behind the sound, same words
-  (one more word right). The old setup can be re-measured with `captionprobe apple ... legacy`.
+  (one more word right). The user confirmed it as fast enough in the app on 2026-11-09, which also means the
+  tap and the System Audio Recording prompt work inside the signed app on this Mac. The old setup can be re-measured with `captionprobe apple ... legacy`.
 - **Not measured yet:** film / YouTube sound with music and several speakers; Apple engine live from the tap;
   the permission prompts; the bar over a full-screen video with the Dock icon on; Mac mini + DisplayBridge.
 - The test Mac had 0.8 GB free disk during these runs. One Neural Engine run failed with "No space left on
