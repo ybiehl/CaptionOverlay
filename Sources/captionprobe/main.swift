@@ -36,6 +36,47 @@ func computeUnits(_ name: String) -> MLComputeUnits {
     }
 }
 
+/// Resident memory of this process, MB.
+func residentMB() -> Double {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+        }
+    }
+    return result == KERN_SUCCESS ? Double(info.resident_size) / 1e6 : .nan
+}
+
+/// How long the model takes to be ready, and what it costs in memory.
+/// Run it twice: the first run after a download or a cleared cache (the
+/// folder ~/Library/Caches/captionprobe) is the cold one.
+func load(_ arguments: [String]) async throws {
+    let units = computeUnits(arguments.first ?? "gpu")
+    let before = residentMB()
+    var started = Date()
+    _ = try await ParakeetModelCache.shared.speechModels(encoderComputeUnits: units)
+    let speech = Date().timeIntervalSince(started)
+    started = Date()
+    _ = try await ParakeetModelCache.shared.voiceDetectorModel()
+    let detector = Date().timeIntervalSince(started)
+    let loaded = residentMB()
+    // The first pass also warms the GPU: a short silence through the model.
+    started = Date()
+    let streamer = try await ParakeetStreamer(encoderComputeUnits: units)
+    await streamer.append([Float](repeating: 0.001, count: 16000 * 2))
+    _ = try await streamer.pass()
+    let firstPass = Date().timeIntervalSince(started)
+    started = Date()
+    await streamer.append([Float](repeating: 0.001, count: 16000))
+    _ = try await streamer.pass()
+    let secondPass = Date().timeIntervalSince(started)
+    print(String(format: "load %@: speech model %.1f s, voice detector %.1f s, first pass %.2f s, second pass %.2f s",
+                 arguments.first ?? "gpu", speech, detector, firstPass, secondPass))
+    print(String(format: "  memory: %.0f MB before, %.0f MB with models loaded, %.0f MB after first pass",
+                 before, loaded, residentMB()))
+}
+
 func percentile(_ sorted: [Double], _ p: Double) -> Double {
     guard !sorted.isEmpty else { return .nan }
     return sorted[min(sorted.count - 1, Int(Double(sorted.count) * p))]
@@ -263,10 +304,11 @@ func apple(_ arguments: [String]) async throws {
 }
 
 let arguments = Array(CommandLine.arguments.dropFirst())
-guard let command = arguments.first else { fail("captionprobe download | batch | live | apple") }
+guard let command = arguments.first else { fail("captionprobe download | load | batch | live | apple") }
 do {
     switch command {
     case "download": try await download()
+    case "load": try await load(Array(arguments.dropFirst()))
     case "batch": try await batch(Array(arguments.dropFirst()))
     case "live": try await live(Array(arguments.dropFirst()))
     case "apple": try await apple(Array(arguments.dropFirst()))

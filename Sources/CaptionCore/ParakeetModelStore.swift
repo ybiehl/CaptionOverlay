@@ -91,3 +91,57 @@ public enum ParakeetModelStore {
         try await VadManager(modelDirectory: baseDirectory)
     }
 }
+
+/// The loaded models, kept in memory for as long as the app runs.
+///
+/// Loading Parakeet takes seconds (Core ML compiles it for this Mac the
+/// first time, and reads about half a gigabyte every time), so it is done
+/// once: at app start when Parakeet is the chosen engine, or when the user
+/// chooses it, and never again until the app quits. Turning captions on
+/// then starts at once.
+public actor ParakeetModelCache {
+    public static let shared = ParakeetModelCache()
+
+    private var models: AsrModels?
+    private var modelsUnits: MLComputeUnits?
+    private var voiceDetector: VadManager?
+    private var loading: Task<AsrModels, Error>?
+
+    public var isLoaded: Bool { models != nil && voiceDetector != nil }
+
+    /// Loads when needed; a second caller while loading waits for the first.
+    public func speechModels(
+        encoderComputeUnits: MLComputeUnits = ParakeetModelStore.encoderComputeUnits
+    ) async throws -> AsrModels {
+        if let models, modelsUnits == encoderComputeUnits { return models }
+        if let loading { return try await loading.value }
+        let task = Task {
+            try await ParakeetModelStore.loadSpeechModels(encoderComputeUnits: encoderComputeUnits)
+        }
+        loading = task
+        defer { loading = nil }
+        let loaded = try await task.value
+        models = loaded
+        modelsUnits = encoderComputeUnits
+        return loaded
+    }
+
+    public func voiceDetectorModel() async throws -> VadManager {
+        if let voiceDetector { return voiceDetector }
+        let detector = try await ParakeetModelStore.loadVoiceDetector()
+        voiceDetector = detector
+        return detector
+    }
+
+    /// Both models, loaded and ready.
+    public func warmUp() async throws {
+        _ = try await speechModels()
+        _ = try await voiceDetectorModel()
+    }
+
+    public func unload() {
+        models = nil
+        modelsUnits = nil
+        voiceDetector = nil
+    }
+}

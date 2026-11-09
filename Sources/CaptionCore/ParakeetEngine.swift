@@ -51,13 +51,13 @@ public actor ParakeetStreamer {
         contextSeconds: Double = 3,
         agreement: WordAgreement.Config = .init()
     ) async throws {
-        let models = try await ParakeetModelStore.loadSpeechModels(
+        let models = try await ParakeetModelCache.shared.speechModels(
             encoderComputeUnits: encoderComputeUnits)
         let manager = AsrManager(config: .default)
         try await manager.loadModels(models)
         self.manager = manager
         decoderLayers = await manager.decoderLayerCount
-        voiceDetector = useVoiceDetector ? try await ParakeetModelStore.loadVoiceDetector() : nil
+        voiceDetector = useVoiceDetector ? try await ParakeetModelCache.shared.voiceDetectorModel() : nil
         self.contextSeconds = contextSeconds
         self.agreement = WordAgreement(config: agreement)
     }

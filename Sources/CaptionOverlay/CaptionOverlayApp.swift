@@ -85,6 +85,9 @@ struct MenuContent: View {
         if state.isLoadingLanguage {
             Text(verbatim: L("Loading language…"))
         }
+        if state.isLoadingParakeet {
+            Text(verbatim: L("Loading Parakeet…"))
+        }
         if let problem = state.problem {
             Divider()
             switch problem {

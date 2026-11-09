@@ -1,6 +1,7 @@
 import AppKit
 import CaptionCore
 import Foundation
+import os
 
 // AppState: what the menu shows and the one pipeline behind it:
 //
@@ -45,12 +46,18 @@ final class AppState: ObservableObject {
     @Published private(set) var appleLocales: [Locale] = []
     /// macOS is downloading the chosen Apple language.
     @Published private(set) var isLoadingLanguage = false
+    /// Parakeet is being read into memory (once per app run).
+    @Published private(set) var isLoadingParakeet = false
     @Published private(set) var problem: Problem?
+
+    /// Timings, readable with: log show --predicate 'subsystem == "app.captionoverlay.mac"'
+    private let log = Logger(subsystem: "app.captionoverlay.mac", category: "timing")
 
     @Published var engine: EngineKind {
         didSet {
             guard engine != oldValue else { return }
             UserDefaults.standard.set(engine.rawValue, forKey: Key.engine)
+            if engine == .parakeet { warmUpParakeet() }
             restartIfOn()
         }
     }
@@ -79,6 +86,24 @@ final class AppState: ObservableObject {
         engine = saved == .parakeet && !ParakeetModelStore.isDownloaded ? .apple : saved
         appleLanguage = defaults.string(forKey: Key.appleLanguage) ?? ""
         Task { await loadLanguages() }
+        if engine == .parakeet { warmUpParakeet() }
+    }
+
+    /// Reads Parakeet into memory ahead of time, so turning captions on
+    /// starts at once. The models stay loaded until the app quits.
+    private func warmUpParakeet() {
+        guard parakeetState == .ready, !isLoadingParakeet else { return }
+        isLoadingParakeet = true
+        let started = Date()
+        Task {
+            defer { isLoadingParakeet = false }
+            do {
+                try await ParakeetModelCache.shared.warmUp()
+                log.notice("parakeet ready in \(Date().timeIntervalSince(started), format: .fixed(precision: 1)) s")
+            } catch {
+                log.error("parakeet warm-up failed: \(error)")
+            }
+        }
     }
 
     private func loadLanguages() async {
@@ -116,6 +141,8 @@ final class AppState: ObservableObject {
         isStarting = true
         problem = nil
         panel.show()
+        let started = Date()
+        let kind = engine
         Task {
             do {
                 let engine = try await makeEngine()
@@ -123,9 +150,15 @@ final class AppState: ObservableObject {
                     await engine.stop()
                     return
                 }
+                log.notice("captions on (\(kind.rawValue)): engine ready after \(Date().timeIntervalSince(started), format: .fixed(precision: 1)) s")
+                var firstText = false
                 engine.onUpdate = { [weak self] update in
                     Task { @MainActor in
                         guard let self, generation == self.generation else { return }
+                        if !firstText, !(update.newlySettled + update.provisional).isEmpty {
+                            firstText = true
+                            self.log.notice("captions on (\(kind.rawValue)): first text after \(Date().timeIntervalSince(started), format: .fixed(precision: 1)) s")
+                        }
                         self.panel.apply(update)
                     }
                 }
@@ -220,6 +253,7 @@ final class AppState: ObservableObject {
         guard download == nil else { return }
         parakeetState = .downloading(0)
         if problem == .downloadFailed { problem = nil }
+        let started = Date()
         download = Task { [weak self] in
             do {
                 try await ParakeetModelStore.download { progress in
@@ -239,6 +273,8 @@ final class AppState: ObservableObject {
                 guard let self else { return }
                 self.download = nil
                 self.parakeetState = ParakeetModelStore.isDownloaded ? .ready : .notDownloaded
+                self.log.notice("parakeet downloaded and prepared in \(Date().timeIntervalSince(started), format: .fixed(precision: 1)) s")
+                self.warmUpParakeet()
             } catch {
                 guard let self else { return }
                 let cancelled = Task.isCancelled

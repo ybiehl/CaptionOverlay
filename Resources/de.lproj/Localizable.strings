@@ -9,6 +9,7 @@
 "Language" = "Sprache";
 "Automatic" = "Automatisch";
 "Loading language…" = "Sprache wird geladen …";
+"Loading Parakeet…" = "Parakeet wird geladen …";
 "No sound received. Allow System Audio Recording…" = "Kein Ton empfangen. Systemaudioaufnahme erlauben …";
 "Download failed. Try again." = "Laden fehlgeschlagen. Versuch es noch einmal.";
 "Captions stopped: %@" = "Untertitel angehalten: %@";
